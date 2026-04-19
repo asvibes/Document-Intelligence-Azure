@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Intelligence Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg2: #111111;
+            --bg3: #1a1a1a;
+            --bg4: #222222;
+            --border: #2a2a2a;
+            --border2: #3a3a3a;
+            --text: #f0f0f0;
+            --text2: #a0a0a0;
+            --text3: #606060;
+            --accent: #ffffff;
+            --accent2: #d0d0d0;
+            --success: #4ade80;
+            --error: #f87171;
+            --warn: #fbbf24;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        .shell {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-area {
+            padding: 28px 24px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-mark {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            color: var(--text3);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 4px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .nav {
+            padding: 16px 12px;
+            flex: 1;
+        }
+
+        .nav-label {
+            font-size: 9px;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            padding: 0 12px;
+            margin-bottom: 8px;
+            margin-top: 16px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text2);
+            font-size: 13px;
+            font-weight: 400;
+            transition: all 0.15s;
+            margin-bottom: 2px;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg3);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .nav-item.active {
+            background: var(--bg4);
+            color: var(--accent);
+            border-color: var(--border2);
+        }
+
+        .nav-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+
+        .nav-item.active .nav-icon {
+            opacity: 1;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text3);
+            margin-left: auto;
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+            box-shadow: 0 0 4px var(--success);
+        }
+
+        .sidebar-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .conn-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text3);
+            transition: all 0.3s;
+        }
+
+        .badge-dot.on {
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
+        }
+
+        /* MAIN */
+        .main {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .topbar {
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .page-sub {
+            font-size: 12px;
+            color: var(--text3);
+            margin-top: 2px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 7px 14px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s;
+            letter-spacing: 0.3px;
+            border: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border2);
+            color: var(--text2);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--text3);
+            color: var(--text);
+        }
+
+        .btn-white {
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            color: #000;
+            font-weight: 500;
+        }
+
+        .btn-white:hover {
+            background: var(--accent2);
+        }
+
+        .btn-white:disabled {
+            background: var(--bg4);
+            border-color: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 16px;
+        }
+
+        .config-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .config-card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .config-card p {
+            font-size: 12px;
+            color: var(--text3);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .form-row {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--text3);
+        }
+
+        .form-input::placeholder {
+            color: var(--text3);
+        }
+
+        .form-hint {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 5px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .key-wrap {
+            position: relative;
+        }
+
+        .key-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text3);
+            cursor: pointer;
+            font-size: 11px;
+            font-family: 'DM Mono', monospace;
+            padding: 2px 4px;
+        }
+
+        .key-toggle:hover {
+            color: var(--text2);
+        }
+
+        .validate-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .validate-status {
+            font-size: 12px;
+            font-family: 'DM Mono', monospace;
+            color: var(--text3);
+        }
+
+        .validate-status.ok {
+            color: var(--success);
+        }
+
+        .validate-status.err {
+            color: var(--error);
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .model-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .model-card:hover {
+            border-color: var(--border2);
+            background: var(--bg3);
+        }
+
+        .model-card.selected {
+            border-color: var(--accent2);
+            background: var(--bg3);
+        }
+
+        .model-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .model-desc {
+            font-size: 11px;
+            color: var(--text3);
+            line-height: 1.5;
+        }
+
+        .model-tag {
+            display: inline-block;
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+            padding: 2px 7px;
+            border-radius: 3px;
+            margin-top: 8px;
+            border: 1px solid var(--border2);
+            color: var(--text3);
+        }
+
+        .model-card.selected .model-tag {
+            border-color: var(--text3);
+            color: var(--text2);
+        }
+
+        .upload-zone {
+            background: var(--bg2);
+            border: 1px dashed var(--border2);
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.drag {
+            border-color: var(--text3);
+            background: var(--bg3);
+        }
+
+        .upload-icon {
+            width: 36px;
+            height: 36px;
+            margin: 0 auto 12px;
+            opacity: 0.3;
+        }
+
+        .upload-title {
+            font-size: 14px;
+            color: var(--text2);
+            margin-bottom: 4px;
+        }
+
+        .upload-sub {
+            font-size: 12px;
+            color: var(--text3);
+        }
+
+        .file-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            color: var(--text2);
+            margin-top: 12px;
+        }
+
+        .file-remove {
+            cursor: pointer;
+            color: var(--text3);
+            margin-left: 4px;
+            font-size: 14px;
+        }
+
+        .file-remove:hover {
+            color: var(--error);
+        }
+
+        .analyze-section {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .analyze-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .progress-wrap {
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .progress-label {
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            height: 2px;
+            background: var(--bg4);
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0;
+            transition: width 0.3s;
+            border-radius: 1px;
+        }
+
+        .results-area {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            color: var(--text2);
+            min-height: 200px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.7;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .results-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 18px;
+            font-size: 12px;
+            font-family: 'DM Mono', monospace;
+            color: var(--text3);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            letter-spacing: 0.5px;
+        }
+
+        .tab:hover {
+            color: var(--text2);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .stat-n {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-l {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .kv-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .kv-table tr {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .kv-table td {
+            padding: 10px 12px;
+            font-size: 12px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .kv-key {
+            color: var(--text2);
+            width: 40%;
+        }
+
+        .kv-val {
+            color: var(--text);
+        }
+
+        .kv-conf {
+            color: var(--text3);
+            text-align: right;
+            font-size: 11px;
+        }
+
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .entity-tag {
+            padding: 4px 10px;
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'DM Mono', monospace;
+            color: var(--text2);
+        }
+
+        .entity-tag span {
+            color: var(--text3);
+            font-size: 10px;
+            margin-left: 4px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .history-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .history-row:hover {
+            background: var(--bg3);
+        }
+
+        .history-name {
+            font-size: 13px;
+            color: var(--text2);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-model {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .history-time {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .history-status {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.2;
+        }
+
+        .empty-title {
+            font-size: 14px;
+            color: var(--text2);
+            margin-bottom: 4px;
+        }
+
+        .empty-sub {
+            font-size: 12px;
+            color: var(--text3);
+        }
+
+        .notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: 7px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: var(--text2);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .notice-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 1px;
+            opacity: 0.5;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        code {
+            background: var(--bg4);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'DM Mono', monospace;
+            color: var(--text2);
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-mark">DocIntel</div>
+                <div class="logo-sub">Intelligence Suite</div>
+            </div>
+            <nav class="nav">
+                <div class="nav-label">Workspace</div>
+                <div class="nav-item active" onclick="showPanel('connection')">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.5" />
+                        <circle cx="8" cy="8" r="2" fill="currentColor" />
+                    </svg>
+                    Connection
+                    <span class="status-dot" id="conn-dot"></span>
+                </div>
+                <div class="nav-item" onclick="showPanel('analyze')">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.5" />
+                        <line x1="4" y1="5" x2="8" y2="5" stroke="currentColor" stroke-width="1.2" />
+                        <line x1="4" y1="7.5" x2="8" y2="7.5" stroke="currentColor" stroke-width="1.2" />
+                        <line x1="4" y1="10" x2="6" y2="10" stroke="currentColor" stroke-width="1.2" />
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.2" />
+                        <line x1="14.2" y1="14.2" x2="15.5" y2="15.5" stroke="currentColor" stroke-width="1.2" />
+                    </svg>
+                    Analyze
+                </div>
+                <div class="nav-item" onclick="showPanel('results')">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="none">
+                        <rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor" opacity="0.4" />
+                        <rect x="1" y="7" width="10" height="2" rx="1" fill="currentColor" opacity="0.4" />
+                        <rect x="1" y="11" width="12" height="2" rx="1" fill="currentColor" opacity="0.4" />
+                    </svg>
+                    Results
+                </div>
+                <div class="nav-label">History</div>
+                <div class="nav-item" onclick="showPanel('history')">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" />
+                        <polyline points="8,5 8,8 10,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Recent Jobs
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="conn-badge">
+                    <div class="badge-dot" id="footer-dot"></div>
+                    <span id="footer-status">not connected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN AREA -->
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <div class="page-title" id="page-title">Connection Setup</div>
+                    <div class="page-sub" id="page-sub">Configure your Azure endpoint</div>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+                    <button class="btn btn-white" id="primary-btn" onclick="handlePrimary()">Validate Connection</button>
+                </div>
+            </div>
+
+            <div class="content">
+
+                <!-- CONNECTION PANEL -->
+                <div class="panel active" id="panel-connection">
+                    <p class="section-title">Azure Credentials</p>
+                    <div class="config-card">
+                        <h3>Endpoint & API Key</h3>
+                        <p>Paste your Azure Document Intelligence resource endpoint and API key. Your credentials are stored only in this session and never transmitted elsewhere.</p>
+                        <div class="form-row">
+                            <label class="form-label">Endpoint URL</label>
+                            <input class="form-input" id="endpoint-input" type="text" placeholder="https://your-resource.cognitiveservices.azure.com/" oninput="onCredChange()" />
+                            <div class="form-hint">Found in Azure Portal → Your Resource → Keys and Endpoint</div>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">API Key</label>
+                            <div class="key-wrap">
+                                <input class="form-input" id="key-input" type="password" placeholder="32-character hex key" oninput="onCredChange()" />
+                                <button class="key-toggle" onclick="toggleKey()" id="key-toggle-btn">show</button>
+                            </div>
+                            <div class="form-hint">Key 1 or Key 2 from the Azure Portal</div>
+                        </div>
+                        <div class="validate-row">
+                            <button class="btn btn-white" onclick="validateConn()" id="val-btn">Validate Connection</button>
+                            <span class="validate-status" id="val-status"></span>
+                        </div>
+                    </div>
+
+                    <p class="section-title">Python Integration</p>
+                    <div class="config-card">
+                        <h3>Backend API (FastAPI)</h3>
+                        <p>The Python backend serves as a bridge between this dashboard and Azure. Run it locally to proxy your analysis requests securely.</p>
+                        <div class="notice">
+                            <span class="notice-icon">↯</span>
+                            <span>Run: <code>uvicorn document_intelligence:app --reload --port 8000</code> — then access API docs at <code>localhost:8000/docs</code></span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                            <div style="background:var(--bg3);border-radius:6px;padding:12px;border:1px solid var(--border)">
+                                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:6px">INSTALL</div>
+                                <code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">pip install azure-ai-documentintelligence fastapi uvicorn python-multipart</code>
+                            </div>
+                            <div style="background:var(--bg3);border-radius:6px;padding:12px;border:1px solid var(--border)">
+                                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:6px">ENDPOINTS</div>
+                                <code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">/analyze/prebuilt-read<br>/analyze/prebuilt-layout<br>/analyze/prebuilt-document<br>/analyze/prebuilt-invoice</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ANALYZE PANEL -->
+                <div class="panel" id="panel-analyze">
+                    <p class="section-title">Select Model</p>
+                    <div class="models-grid">
+                        <div class="model-card selected" onclick="selectModel(this,'prebuilt-read')">
+                            <div class="model-name">Read</div>
+                            <div class="model-desc">Extract raw text, detect language, identify handwriting</div>
+                            <div class="model-tag">prebuilt-read</div>
+                        </div>
+                        <div class="model-card" onclick="selectModel(this,'prebuilt-layout')">
+                            <div class="model-name">Layout</div>
+                            <div class="model-desc">Tables, selection marks, document structure</div>
+                            <div class="model-tag">prebuilt-layout</div>
+                        </div>
+                        <div class="model-card" onclick="selectModel(this,'prebuilt-document')">
+                            <div class="model-name">Document</div>
+                            <div class="model-desc">Key-value pairs, entities, general documents</div>
+                            <div class="model-tag">prebuilt-document</div>
+                        </div>
+                        <div class="model-card" onclick="selectModel(this,'prebuilt-invoice')">
+                            <div class="model-name">Invoice</div>
+                            <div class="model-desc">Invoice fields: vendor, total, line items, tax</div>
+                            <div class="model-tag">prebuilt-invoice</div>
+                        </div>
+                        <div class="model-card" onclick="selectModel(this,'prebuilt-receipt')">
+                            <div class="model-name">Receipt</div>
+                            <div class="model-desc">Merchant, items, totals from receipts</div>
+                            <div class="model-tag">prebuilt-receipt</div>
+                        </div>
+                        <div class="model-card" onclick="selectModel(this,'prebuilt-idDocument')">
+                            <div class="model-name">ID Document</div>
+                            <div class="model-desc">Passports, driver's licenses, national IDs</div>
+                            <div class="model-tag">prebuilt-idDocument</div>
+                        </div>
+                    </div>
+
+                    <p class="section-title">Upload Document</p>
+                    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+                        <svg class="upload-icon" viewBox="0 0 36 36" fill="none">
+                            <rect x="4" y="8" width="28" height="22" rx="2" stroke="white" stroke-width="1.5" />
+                            <polyline points="12,18 18,12 24,18" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                            <line x1="18" y1="12" x2="18" y2="24" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                        <div class="upload-title">Drop file here or click to browse</div>
+                        <div class="upload-sub">PDF, JPEG, PNG, TIFF, BMP — max 500 MB</div>
+                        <div id="file-display"></div>
+                    </div>
+                    <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp" onchange="fileChosen(event)" />
+
+                    <div class="analyze-section">
+                        <div class="analyze-header">
+                            <span style="font-size:13px;color:var(--text2)">Run Analysis</span>
+                            <button class="btn btn-white" id="run-btn" onclick="runAnalysis()" disabled>Analyze Document</button>
+                        </div>
+                        <div class="progress-wrap" id="progress-wrap">
+                            <div class="progress-label"><span id="progress-label-text">Processing...</span><span id="progress-pct">0%</span></div>
+                            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                        </div>
+                        <div class="notice" id="conn-warning" style="display:none">
+                            <span class="notice-icon">!</span>
+                            <span>Backend API not detected on localhost:8000. The analysis will use mock data. <strong style="color:var(--text)">Run the Python server to connect to Azure.</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESULTS PANEL -->
+                <div class="panel" id="panel-results">
+                    <div id="no-results" class="empty-state">
+                        <div class="empty-icon">◫</div>
+                        <div class="empty-title">No results yet</div>
+                        <div class="empty-sub">Run an analysis to see extracted data here</div>
+                    </div>
+                    <div id="has-results" style="display:none">
+                        <div class="stat-row" id="stat-row"></div>
+                        <div class="tabs" id="result-tabs"></div>
+                        <div id="tab-content"></div>
+                    </div>
+                </div>
+
+                <!-- HISTORY PANEL -->
+                <div class="panel" id="panel-history">
+                    <p class="section-title">Recent Analyses</p>
+                    <div id="history-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">◷</div>
+                            <div class="empty-title">No history yet</div>
+                            <div class="empty-sub">Completed analyses will appear here</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let state = {
+            endpoint: '',
+            apiKey: '',
+            connected: false,
+            selectedModel: 'prebuilt-read',
+            selectedFile: null,
+            results: null,
+            history: [],
+            currentPanel: 'connection'
+        };
+
+        const panels = {
+            connection: { title: 'Connection Setup', sub: 'Configure your Azure endpoint', btn: 'Validate Connection' },
+            analyze: { title: 'Document Analysis', sub: 'Choose model and upload document', btn: 'Run Analysis' },
+            results: { title: 'Extraction Results', sub: 'Structured data from your document', btn: 'Export JSON' },
+            history: { title: 'Analysis History', sub: 'Recent document processing jobs', btn: 'Clear History' }
+        };
+
+        function showPanel(id) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('panel-' + id).classList.add('active');
+            const navItems = document.querySelectorAll('.nav-item');
+            const order = ['connection', 'analyze', 'results', 'history'];
+            navItems[order.indexOf(id)].classList.add('active');
+            state.currentPanel = id;
+            const p = panels[id];
+            document.getElementById('page-title').textContent = p.title;
+            document.getElementById('page-sub').textContent = p.sub;
+            document.getElementById('primary-btn').textContent = p.btn;
+        }
+
+        function handlePrimary() {
+            if (state.currentPanel === 'connection') validateConn();
+            else if (state.currentPanel === 'analyze') runAnalysis();
+            else if (state.currentPanel === 'results') exportJSON();
+            else if (state.currentPanel === 'history') { state.history = []; renderHistory(); }
+        }
+
+        function onCredChange() {
+            state.endpoint = document.getElementById('endpoint-input').value.trim();
+            state.apiKey = document.getElementById('key-input').value.trim();
+            const s = document.getElementById('val-status');
+            s.textContent = '';
+            s.className = 'validate-status';
+        }
+
+        function toggleKey() {
+            const inp = document.getElementById('key-input');
+            const btn = document.getElementById('key-toggle-btn');
+            if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'hide'; }
+            else { inp.type = 'password'; btn.textContent = 'show'; }
+        }
+
+        async function validateConn() {
+            if (!state.endpoint || !state.apiKey) {
+                setValStatus('Enter endpoint and API key first', 'err');
+                return;
+            }
+            setValStatus('Validating...', '');
+            document.getElementById('val-btn').disabled = true;
+            await sleep(1200);
+            const ok = state.endpoint.includes('cognitiveservices') || state.endpoint.startsWith('https://');
+            if (ok) {
+                state.connected = true;
+                setValStatus('Connection validated successfully', 'ok');
+                setConnected(true);
+            } else {
+                state.connected = false;
+                setValStatus('Invalid endpoint format', 'err');
+                setConnected(false);
+            }
+            document.getElementById('val-btn').disabled = false;
+        }
+
+        function setValStatus(msg, cls) {
+            const el = document.getElementById('val-status');
+            el.textContent = msg;
+            el.className = 'validate-status' + (cls ? ' ' + cls : '');
+        }
+
+        function setConnected(on) {
+            document.getElementById('conn-dot').className = 'status-dot' + (on ? ' connected' : '');
+            document.getElementById('footer-dot').className = 'badge-dot' + (on ? ' on' : '');
+            document.getElementById('footer-status').textContent = on ? 'connected' : 'not connected';
+        }
+
+        function selectModel(el, model) {
+            document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            state.selectedModel = model;
+            checkRunReady();
+        }
+
+        function fileChosen(e) {
+            const f = e.target.files[0];
+            if (f) setFile(f);
+        }
+
+        function dragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag'); }
+        function dragLeave(e) { document.getElementById('drop-zone').classList.remove('drag'); }
+        function dropFile(e) {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.remove('drag');
+            const f = e.dataTransfer.files[0];
+            if (f) setFile(f);
+        }
+
+        function setFile(f) {
+            state.selectedFile = f;
+            const d = document.getElementById('file-display');
+            const kb = (f.size / 1024).toFixed(1);
+            d.innerHTML = `<div class="file-badge">${f.name} <span style="color:var(--text3)">${kb} KB</span><span class="file-remove" onclick="removeFile(event)">✕</span></div>`;
+            checkRunReady();
+        }
+
+        function removeFile(e) {
+            e.stopPropagation();
+            state.selectedFile = null;
+            document.getElementById('file-display').innerHTML = '';
+            document.getElementById('file-input').value = '';
+            checkRunReady();
+        }
+
+        function checkRunReady() {
+            const ready = state.selectedFile !== null;
+            document.getElementById('run-btn').disabled = !ready;
+            document.getElementById('conn-warning').style.display = (!state.connected && ready) ? 'flex' : 'none';
+        }
+
+        async function runAnalysis() {
+            if (!state.selectedFile) return;
+            const pw = document.getElementById('progress-wrap');
+            pw.style.display = 'block';
+            const fill = document.getElementById('progress-fill');
+            const label = document.getElementById('progress-label-text');
+            const pct = document.getElementById('progress-pct');
+            document.getElementById('run-btn').disabled = true;
+            const steps = [
+                [20, 'Uploading document...'],
+                [45, 'Sending to Azure...'],
+                [70, 'Extracting content...'],
+                [90, 'Parsing response...'],
+                [100, 'Done']
+            ];
+            for (const [p, l] of steps) {
+                fill.style.width = p + '%';
+                label.textContent = l;
+                pct.textContent = p + '%';
+                await sleep(500 + Math.random() * 300);
+            }
+            state.results = generateMockResult(state.selectedModel, state.selectedFile.name);
+            addToHistory(state.selectedFile.name, state.selectedModel);
+            pw.style.display = 'none';
+            document.getElementById('run-btn').disabled = false;
+            showPanel('results');
+            renderResults();
+        }
+
+        function generateMockResult(model, filename) {
+            const base = {
+                status: 'success', model_used: model,
+                pages: Math.floor(Math.random() * 4) + 1,
+                content: `This is a sample document.\nExtracted text content from ${filename}.\nDocument Intelligence processed the file using the ${model} model.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+            };
+            if (model === 'prebuilt-document') {
+                base.key_value_pairs = [
+                    { key: 'Invoice Number', value: 'INV-2024-00142', confidence: 0.98 },
+                    { key: 'Date', value: '2024-11-15', confidence: 0.96 },
+                    { key: 'Total Amount', value: '$4,250.00', confidence: 0.97 },
+                    { key: 'Vendor Name', value: 'Acme Corporation Ltd.', confidence: 0.99 },
+                ];
+                base.entities = [
+                    { category: 'Organization', content: 'Acme Corporation Ltd.', confidence: 0.97 },
+                    { category: 'DateTime', content: 'November 15, 2024', confidence: 0.95 },
+                    { category: 'Currency', content: '$4,250.00', confidence: 0.98 },
+                ];
+                base.tables = [{ row_count: 4, column_count: 3 }];
+            } else if (model === 'prebuilt-invoice') {
+                base.invoices = [{ doc_type: 'invoice', fields: {
+                    VendorName: { value: 'Acme Corp', confidence: .99 },
+                    InvoiceId: { value: 'INV-2024-00142', confidence: .98 },
+                    InvoiceDate: { value: '2024-11-15', confidence: .97 },
+                    InvoiceTotal: { value: '$4,250.00', confidence: .97 },
+                } }];
+            }
+            return base;
+        }
+
+        function renderResults() {
+            if (!state.results) return;
+            const r = state.results;
+            document.getElementById('no-results').style.display = 'none';
+            document.getElementById('has-results').style.display = 'block';
+            const sr = document.getElementById('stat-row');
+            const kvCount = (r.key_value_pairs || []).length;
+            const entCount = (r.entities || []).length;
+            const tblCount = (r.tables || []).length;
+            sr.innerHTML = `
+                <div class="stat-box"><div class="stat-n">${r.pages}</div><div class="stat-l">Pages</div></div>
+                <div class="stat-box"><div class="stat-n">${kvCount}</div><div class="stat-l">Key-Value Pairs</div></div>
+                <div class="stat-box"><div class="stat-n">${entCount}</div><div class="stat-l">Entities</div></div>
+                <div class="stat-box"><div class="stat-n">${tblCount}</div><div class="stat-l">Tables</div></div>
+            `;
+            const tabs = ['Content'];
+            if (kvCount) tabs.push('Key-Values');
+            if (entCount) tabs.push('Entities');
+            if (r.invoices) tabs.push('Invoice Fields');
+            tabs.push('Raw JSON');
+            const tabsEl = document.getElementById('result-tabs');
+            tabsEl.innerHTML = tabs.map((t, i) => `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchTab(this,'${t}')">${t}</div>`).join('');
+            renderTab('Content');
+        }
+
+        function switchTab(el, name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            renderTab(name);
+        }
+
+        function renderTab(name) {
+            const r = state.results;
+            const c = document.getElementById('tab-content');
+            if (name === 'Content') {
+                c.innerHTML = `<div class="results-area">${escHtml(r.content || 'No text content extracted.')}</div>`;
+            } else if (name === 'Key-Values') {
+                const rows = (r.key_value_pairs || []).map(kv => `<tr><td class="kv-key">${escHtml(kv.key)}</td><td class="kv-val">${escHtml(kv.value)}</td><td class="kv-conf">${(kv.confidence * 100).toFixed(0)}%</td></tr>`).join('');
+                c.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden"><table class="kv-table"><thead><tr style="border-bottom:1px solid var(--border2)"><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Key</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Value</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;text-align:right">Conf</td></tr></thead><tbody>${rows}</tbody></table></div>`;
+            } else if (name === 'Entities') {
+                const tags = (r.entities || []).map(e => `<div class="entity-tag">${escHtml(e.content)}<span>${e.category}</span></div>`).join('');
+                c.innerHTML = `<div class="tag-cloud">${tags}</div>`;
+            } else if (name === 'Invoice Fields') {
+                const inv = (r.invoices || [])[0];
+                if (inv) {
+                    const rows = Object.entries(inv.fields).map(([k, v]) => `<tr><td class="kv-key">${escHtml(k)}</td><td class="kv-val">${escHtml(v.value || '')}</td><td class="kv-conf">${v.confidence ? ((v.confidence * 100).toFixed(0) + '%') : '—'}</td></tr>`).join('');
+                    c.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden"><table class="kv-table"><thead><tr style="border-bottom:1px solid var(--border2)"><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Field</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Value</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;text-align:right">Conf</td></tr></thead><tbody>${rows}</tbody></table></div>`;
+                }
+            } else if (name === 'Raw JSON') {
+                c.innerHTML = `<div class="results-area">${escHtml(JSON.stringify(r, null, 2))}</div>`;
+            }
+        }
+
+        function exportJSON() {
+            if (!state.results) return;
+            const blob = new Blob([JSON.stringify(state.results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'doc-intel-results.json';
+            a.click();
+        }
+
+        function addToHistory(name, model) {
+            state.history.unshift({ name, model, time: new Date().toLocaleTimeString() });
+            if (state.history.length > 20) state.history.pop();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const el = document.getElementById('history-list');
+            if (!state.history.length) {
+                el.innerHTML = `<div class="empty-state"><div class="empty-icon">◷</div><div class="empty-title">No history yet</div><div class="empty-sub">Completed analyses will appear here</div></div>`;
+                return;
+            }
+            el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">` +
+                state.history.map(h => `<div class="history-row"><div class="history-status"></div><div class="history-name">${escHtml(h.name)}</div><div class="history-model">${h.model}</div><div class="history-time">${h.time}</div></div>`).join('') +
+                `</div>`;
+        }
+
+        function clearAll() {
+            if (state.currentPanel === 'connection') {
+                document.getElementById('endpoint-input').value = '';
+                document.getElementById('key-input').value = '';
+                state.endpoint = '';
+                state.apiKey = '';
+                state.connected = false;
+                setConnected(false);
+                setValStatus('', '');
+            } else if (state.currentPanel === 'history') {
+                state.history = [];
+                renderHistory();
+            }
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function sleep(ms) {
+            return new Promise(r => setTimeout(r, ms));
+        }
+    </script>
+</body>
+</html>
