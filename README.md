@@ -151,11 +151,8 @@ uvicorn document\_intelligence:app --reload
 
 
 | Method | Endpoint   | Description               |
-
-| ------ | ---------- | ------------------------- |
-
+|--------|------------|---------------------------|
 | GET    | `/docs`    | Swagger UI                |
-
 | POST   | `/analyze` | Analyze uploaded document |
 
 
