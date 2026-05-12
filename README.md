@@ -1,4 +1,4 @@
-\# 📄 Document Intelligence API (Azure)
+# 📄 Document Intelligence API (Azure)
 
 
 
@@ -6,47 +6,47 @@ A FastAPI-based backend service that analyzes documents using Azure Document Int
 
 
 
-\---
+---
 
 
 
-\## 🚀 Features
+## 🚀 Features
 
 
 
-\* 📑 Analyze documents (PDFs, images, etc.)
+* 📑 Analyze documents (PDFs, images, etc.)
 
-\* ⚡ FastAPI backend for high performance
+* ⚡ FastAPI backend for high performance
 
-\* 🌐 Interactive API docs with Swagger UI
+* 🌐 Interactive API docs with Swagger UI
 
 \* ☁️ Integration with Azure AI Document Intelligence
 
 
 
-\---
+---
 
 
 
-\## 🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 
 
-\* Python 🐍
+* Python 🐍
 
-\* FastAPI ⚡
+* FastAPI ⚡
 
-\* Uvicorn 🌐
+* Uvicorn 🌐
 
-\* Azure Document Intelligence ☁️
-
-
-
-\---
+* Azure Document Intelligence ☁️
 
 
 
-\## 📂 Project Structure
+---
+
+
+
+## 📂 Project Structure
 
 
 
@@ -54,29 +54,31 @@ A FastAPI-based backend service that analyzes documents using Azure Document Int
 
 Document-Intelligence-Azure/
 
-│── document\_intelligence.py   # Main FastAPI app
-
-│── index.html                 # Frontend (if used)
-
-│── \_\_pycache\_\_/               # Ignored files
-
+│── app/
+│   │── document_intelligence.py
+│
+│── templates/
+│   │── index.html
+│
+│── static/                 # CSS, JS, images (optional)
+│
+│── requirements.txt        # Python dependencies
 │── .gitignore
-
 │── README.md
 
 ```
 
 
 
-\---
+---
 
 
 
-\## ⚙️ Setup Instructions
+ ⚙️ Setup Instructions
 
 
 
-\### 1. Clone the repository
+### 1. Clone the repository
 
 
 
@@ -94,7 +96,7 @@ cd Document-Intelligence-Azure
 
 
 
-\### 2. Create virtual environment
+### 2. Create virtual environment
 
 
 
@@ -108,11 +110,11 @@ python -m venv .venv
 
 
 
-\---
+---
 
 
 
-\### 3. Install dependencies
+### 3. Install dependencies
 
 
 
@@ -124,11 +126,11 @@ pip install -r requirements.txt
 
 
 
-\---
+---
 
 
 
-\### 4. Run the server
+### 4. Run the server
 
 
 
@@ -140,11 +142,11 @@ uvicorn document\_intelligence:app --reload
 
 
 
-\---
+---
 
 
 
-\## 🌐 API Endpoints
+## 🌐 API Endpoints
 
 
 
@@ -158,11 +160,11 @@ uvicorn document\_intelligence:app --reload
 
 
 
-\---
+---
 
 
 
-\## 📸 API Preview
+## 📸 API Preview
 
 
 
@@ -174,69 +176,23 @@ Once running, open:
 
 
 
-\---
+---
 
 
 
-\## ⚠️ Notes
+## ⚠️ Notes
 
 
 
-\* Make sure Azure credentials are properly configured
+* Make sure Azure credentials are properly configured
 
-\* Do not upload sensitive keys to GitHub
-
-
-
-\---
+* Do not upload sensitive keys to GitHub
 
 
 
-\## 💡 Future Improvements
+---
 
 
-
-\* Add authentication 🔐
-
-\* Improve UI 🎨
-
-\* Deploy to cloud ☁️
-
-
-
-\---
-
-
-
-\## 🤝 Contributing
-
-
-
-Feel free to fork and improve the project!
-
-
-
-\---
-
-
-
-\## 📜 License
-
-
-
-This project is open-source and available under the MIT License.
-
-
-
-\---
-
-
-
-\## ❤️ Author
-
-
-
-Made with dedication by \*\*asvibes\*\*
 
 
 
