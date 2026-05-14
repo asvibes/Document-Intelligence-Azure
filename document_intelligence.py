@@ -5,17 +5,14 @@ Azure Document Intelligence (Form Recognizer) Integration
 
 import os
 import json
-import base64
 from pathlib import Path
 from typing import Optional
 
-# ─── Install dependencies ────────────────────────────────────────────────────
-# pip install azure-ai-documentintelligence azure-core fastapi uvicorn python-multipart
-
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -42,22 +39,13 @@ class ConnectionConfig(BaseModel):
     api_key: str
 
 
-class AnalysisResult(BaseModel):
-    status: str
-    model_used: str
-    pages: int
-    content: Optional[str]
-    tables: list
-    key_value_pairs: list
-    entities: list
-    raw: Optional[dict] = None
-
-
 # ─── Global client store (session-based) ─────────────────────────────────────
 _clients: dict[str, DocumentIntelligenceClient] = {}
 
 
 def get_client(endpoint: str, api_key: str) -> DocumentIntelligenceClient:
+    # Clean the endpoint URL
+    endpoint = endpoint.strip().rstrip("/")
     key = f"{endpoint}::{api_key[:8]}"
     if key not in _clients:
         _clients[key] = DocumentIntelligenceClient(
@@ -67,16 +55,82 @@ def get_client(endpoint: str, api_key: str) -> DocumentIntelligenceClient:
     return _clients[key]
 
 
+def get_field_value(field):
+    """Safely extract the value from a DocumentField object."""
+    if not field:
+        return None
+    
+    # DocumentField in recent SDKs uses specific value_* attributes based on type
+    if field.type == "string":
+        return field.value_string
+    elif field.type == "date":
+        return str(field.value_date) if field.value_date else None
+    elif field.type == "time":
+        return str(field.value_time) if field.value_time else None
+    elif field.type == "phoneNumber":
+        return field.value_phone_number
+    elif field.type == "number":
+        return field.value_number
+    elif field.type == "integer":
+        return field.value_integer
+    elif field.type == "selectionMark":
+        return field.value_selection_mark
+    elif field.type == "countryRegion":
+        return field.value_country_region
+    elif field.type == "signature":
+        return field.value_signature
+    elif field.type == "currency":
+        return str(field.value_currency) if field.value_currency else None
+    elif field.type == "address":
+        return str(field.value_address) if field.value_address else None
+    elif field.type == "boolean":
+        return field.value_boolean
+    elif field.type == "array":
+        return [get_field_value(item) for item in (field.value_array or [])]
+    elif field.type == "object":
+        return {k: get_field_value(v) for k, v in (field.value_object or {}).items()}
+    
+    # Fallback to content if no specific value is found
+    return field.content
+
+
+# ─── Exception Handling ──────────────────────────────────────────────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Ensure all unhandled exceptions return a JSON response instead of HTML."""
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "detail": str(exc)},
+    )
+
+
 # ─── Routes ──────────────────────────────────────────────────────────────────
+@app.get("/", response_class=HTMLResponse)
+async def get_index():
+    """Serve the dashboard frontend."""
+    try:
+        # Use absolute path to index.html relative to this script
+        current_dir = Path(__file__).parent
+        index_path = current_dir / "index.html"
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return f"index.html not found. Please ensure it is in the same directory as this script."
+
+
 @app.post("/validate-connection", summary="Validate endpoint and API key")
 async def validate_connection(config: ConnectionConfig):
     """Test if the provided endpoint and API key are valid."""
     try:
-        client = get_client(config.endpoint, config.api_key)
-        # Attempt a lightweight call to verify credentials
-        return {"status": "success", "message": "Connection validated successfully"}
+        if not config.endpoint.startswith("https://"):
+            raise ValueError("Endpoint must start with https://")
+        
+        # Creating the client doesn't perform a network call.
+        get_client(config.endpoint, config.api_key)
+        
+        return {"status": "success", "message": "Connection configuration accepted"}
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Connection failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/analyze/prebuilt-read", summary="Extract text from document")
@@ -92,8 +146,8 @@ async def analyze_read(
 
         poller = client.begin_analyze_document(
             model_id="prebuilt-read",
-            analyze_request=content,
-            content_type=file.content_type or "application/octet-stream"
+            body=content,
+            content_type="application/octet-stream"
         )
         result = poller.result()
 
@@ -104,6 +158,9 @@ async def analyze_read(
             "content": result.content,
             "languages": [lang.locale for lang in (result.languages or [])],
             "styles": len(result.styles) if result.styles else 0,
+            "key_value_pairs": [],
+            "entities": [],
+            "tables": [],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -122,8 +179,8 @@ async def analyze_layout(
 
         poller = client.begin_analyze_document(
             model_id="prebuilt-layout",
-            analyze_request=content,
-            content_type=file.content_type or "application/octet-stream"
+            body=content,
+            content_type="application/octet-stream"
         )
         result = poller.result()
 
@@ -148,6 +205,8 @@ async def analyze_layout(
             "content": result.content,
             "tables": tables,
             "table_count": len(tables),
+            "key_value_pairs": [],
+            "entities": [],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -166,8 +225,8 @@ async def analyze_document(
 
         poller = client.begin_analyze_document(
             model_id="prebuilt-document",
-            analyze_request=content,
-            content_type=file.content_type or "application/octet-stream"
+            body=content,
+            content_type="application/octet-stream"
         )
         result = poller.result()
 
@@ -230,8 +289,8 @@ async def analyze_invoice(
 
         poller = client.begin_analyze_document(
             model_id="prebuilt-invoice",
-            analyze_request=content,
-            content_type=file.content_type or "application/octet-stream"
+            body=content,
+            content_type="application/octet-stream"
         )
         result = poller.result()
 
@@ -239,8 +298,9 @@ async def analyze_invoice(
         for doc in (result.documents or []):
             fields = {}
             for name, field in (doc.fields or {}).items():
+                val = get_field_value(field)
                 fields[name] = {
-                    "value": str(field.value) if field.value else field.content,
+                    "value": str(val) if val is not None else field.content,
                     "confidence": round(field.confidence, 3) if field.confidence else None
                 }
             invoices.append({"doc_type": doc.doc_type, "fields": fields})
@@ -249,7 +309,11 @@ async def analyze_invoice(
             "status": "success",
             "model_used": "prebuilt-invoice",
             "pages": len(result.pages) if result.pages else 0,
+            "content": result.content,
             "invoices": invoices,
+            "key_value_pairs": [],
+            "entities": [],
+            "tables": [],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -268,8 +332,8 @@ async def analyze_receipt(
 
         poller = client.begin_analyze_document(
             model_id="prebuilt-receipt",
-            analyze_request=content,
-            content_type=file.content_type or "application/octet-stream"
+            body=content,
+            content_type="application/octet-stream"
         )
         result = poller.result()
 
@@ -277,27 +341,22 @@ async def analyze_receipt(
         for doc in (result.documents or []):
             fields = {}
             for name, field in (doc.fields or {}).items():
-                if hasattr(field, 'value_array') and field.value_array:
-                    items = []
-                    for item in field.value_array:
-                        item_fields = {}
-                        if hasattr(item, 'value_object'):
-                            for k, v in (item.value_object or {}).items():
-                                item_fields[k] = str(v.value) if v.value else v.content
-                        items.append(item_fields)
-                    fields[name] = {"value": items, "confidence": None}
-                else:
-                    fields[name] = {
-                        "value": str(field.value) if field.value else field.content,
-                        "confidence": round(field.confidence, 3) if field.confidence else None
-                    }
+                val = get_field_value(field)
+                fields[name] = {
+                    "value": val if val is not None else field.content,
+                    "confidence": round(field.confidence, 3) if field.confidence else None
+                }
             receipts.append({"doc_type": doc.doc_type, "fields": fields})
 
         return {
             "status": "success",
             "model_used": "prebuilt-receipt",
             "pages": len(result.pages) if result.pages else 0,
+            "content": result.content,
             "receipts": receipts,
+            "key_value_pairs": [],
+            "entities": [],
+            "tables": [],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -316,8 +375,8 @@ async def analyze_id(
 
         poller = client.begin_analyze_document(
             model_id="prebuilt-idDocument",
-            analyze_request=content,
-            content_type=file.content_type or "application/octet-stream"
+            body=content,
+            content_type="application/octet-stream"
         )
         result = poller.result()
 
@@ -325,8 +384,9 @@ async def analyze_id(
         for doc in (result.documents or []):
             fields = {}
             for name, field in (doc.fields or {}).items():
+                val = get_field_value(field)
                 fields[name] = {
-                    "value": str(field.value) if field.value else field.content,
+                    "value": str(val) if val is not None else field.content,
                     "confidence": round(field.confidence, 3) if field.confidence else None
                 }
             documents.append({"doc_type": doc.doc_type, "fields": fields})
@@ -335,7 +395,11 @@ async def analyze_id(
             "status": "success",
             "model_used": "prebuilt-idDocument",
             "pages": len(result.pages) if result.pages else 0,
+            "content": result.content,
             "documents": documents,
+            "key_value_pairs": [],
+            "entities": [],
+            "tables": [],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -345,4 +409,4 @@ async def analyze_id(
 if __name__ == "__main__":
     print("🚀 Starting Document Intelligence API server...")
     print("📖 API Docs: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("document_intelligence:app", host="0.0.0.0", port=8000, reload=True)

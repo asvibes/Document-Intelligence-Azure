@@ -1063,18 +1063,36 @@
             }
             setValStatus('Validating...', '');
             document.getElementById('val-btn').disabled = true;
-            await sleep(1200);
-            const ok = state.endpoint.includes('cognitiveservices') || state.endpoint.startsWith('https://');
-            if (ok) {
-                state.connected = true;
-                setValStatus('Connection validated successfully', 'ok');
-                setConnected(true);
-            } else {
+            
+            try {
+                const response = await fetch('/validate-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: state.endpoint, api_key: state.apiKey })
+                });
+                
+                let data;
+                const text = await response.text();
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (e) {
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                }
+                
+                if (response.ok) {
+                    state.connected = true;
+                    setValStatus('Connection validated successfully', 'ok');
+                    setConnected(true);
+                } else {
+                    throw new Error(data.detail || data.message || 'Validation failed');
+                }
+            } catch (err) {
                 state.connected = false;
-                setValStatus('Invalid endpoint format', 'err');
+                setValStatus(err.message, 'err');
                 setConnected(false);
+            } finally {
+                document.getElementById('val-btn').disabled = false;
             }
-            document.getElementById('val-btn').disabled = false;
         }
 
         function setValStatus(msg, cls) {
@@ -1134,61 +1152,76 @@
 
         async function runAnalysis() {
             if (!state.selectedFile) return;
+            if (!state.connected) {
+                alert('Please validate your Azure connection first.');
+                showPanel('connection');
+                return;
+            }
+
             const pw = document.getElementById('progress-wrap');
             pw.style.display = 'block';
             const fill = document.getElementById('progress-fill');
             const label = document.getElementById('progress-label-text');
             const pct = document.getElementById('progress-pct');
             document.getElementById('run-btn').disabled = true;
-            const steps = [
-                [20, 'Uploading document...'],
-                [45, 'Sending to Azure...'],
-                [70, 'Extracting content...'],
-                [90, 'Parsing response...'],
-                [100, 'Done']
-            ];
-            for (const [p, l] of steps) {
+            
+            const updateProgress = (p, l) => {
                 fill.style.width = p + '%';
                 label.textContent = l;
                 pct.textContent = p + '%';
-                await sleep(500 + Math.random() * 300);
-            }
-            state.results = generateMockResult(state.selectedModel, state.selectedFile.name);
-            addToHistory(state.selectedFile.name, state.selectedModel);
-            pw.style.display = 'none';
-            document.getElementById('run-btn').disabled = false;
-            showPanel('results');
-            renderResults();
-        }
-
-        function generateMockResult(model, filename) {
-            const base = {
-                status: 'success', model_used: model,
-                pages: Math.floor(Math.random() * 4) + 1,
-                content: `This is a sample document.\nExtracted text content from ${filename}.\nDocument Intelligence processed the file using the ${model} model.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
             };
-            if (model === 'prebuilt-document') {
-                base.key_value_pairs = [
-                    { key: 'Invoice Number', value: 'INV-2024-00142', confidence: 0.98 },
-                    { key: 'Date', value: '2024-11-15', confidence: 0.96 },
-                    { key: 'Total Amount', value: '$4,250.00', confidence: 0.97 },
-                    { key: 'Vendor Name', value: 'Acme Corporation Ltd.', confidence: 0.99 },
-                ];
-                base.entities = [
-                    { category: 'Organization', content: 'Acme Corporation Ltd.', confidence: 0.97 },
-                    { category: 'DateTime', content: 'November 15, 2024', confidence: 0.95 },
-                    { category: 'Currency', content: '$4,250.00', confidence: 0.98 },
-                ];
-                base.tables = [{ row_count: 4, column_count: 3 }];
-            } else if (model === 'prebuilt-invoice') {
-                base.invoices = [{ doc_type: 'invoice', fields: {
-                    VendorName: { value: 'Acme Corp', confidence: .99 },
-                    InvoiceId: { value: 'INV-2024-00142', confidence: .98 },
-                    InvoiceDate: { value: '2024-11-15', confidence: .97 },
-                    InvoiceTotal: { value: '$4,250.00', confidence: .97 },
-                } }];
+
+            try {
+                updateProgress(10, 'Preparing document...');
+                
+                const formData = new FormData();
+                formData.append('file', state.selectedFile);
+                
+                let endpoint = '';
+                const model = state.selectedModel;
+                if (model === 'prebuilt-read') endpoint = '/analyze/prebuilt-read';
+                else if (model === 'prebuilt-layout') endpoint = '/analyze/prebuilt-layout';
+                else if (model === 'prebuilt-document') endpoint = '/analyze/prebuilt-document';
+                else if (model === 'prebuilt-invoice') endpoint = '/analyze/prebuilt-invoice';
+                else if (model === 'prebuilt-receipt') endpoint = '/analyze/prebuilt-receipt';
+                else if (model === 'prebuilt-idDocument') endpoint = '/analyze/prebuilt-id-document';
+
+                const url = new URL(endpoint, window.location.origin);
+                url.searchParams.append('endpoint', state.endpoint);
+                url.searchParams.append('api_key', state.apiKey);
+
+                updateProgress(30, 'Uploading to backend...');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                let data;
+                const text = await response.text();
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (e) {
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                }
+                
+                if (response.ok) {
+                    updateProgress(100, 'Done');
+                    state.results = data;
+                    addToHistory(state.selectedFile.name, state.selectedModel);
+                    await sleep(400);
+                    showPanel('results');
+                    renderResults();
+                } else {
+                    throw new Error(data.detail || 'Analysis failed');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+                updateProgress(0, 'Failed');
+            } finally {
+                pw.style.display = 'none';
+                document.getElementById('run-btn').disabled = false;
             }
-            return base;
         }
 
         function renderResults() {
@@ -1197,20 +1230,28 @@
             document.getElementById('no-results').style.display = 'none';
             document.getElementById('has-results').style.display = 'block';
             const sr = document.getElementById('stat-row');
+            
             const kvCount = (r.key_value_pairs || []).length;
             const entCount = (r.entities || []).length;
             const tblCount = (r.tables || []).length;
+            const pgCount = r.pages || 0;
+
             sr.innerHTML = `
-                <div class="stat-box"><div class="stat-n">${r.pages}</div><div class="stat-l">Pages</div></div>
+                <div class="stat-box"><div class="stat-n">${pgCount}</div><div class="stat-l">Pages</div></div>
                 <div class="stat-box"><div class="stat-n">${kvCount}</div><div class="stat-l">Key-Value Pairs</div></div>
                 <div class="stat-box"><div class="stat-n">${entCount}</div><div class="stat-l">Entities</div></div>
                 <div class="stat-box"><div class="stat-n">${tblCount}</div><div class="stat-l">Tables</div></div>
             `;
+
             const tabs = ['Content'];
-            if (kvCount) tabs.push('Key-Values');
-            if (entCount) tabs.push('Entities');
+            if (kvCount > 0) tabs.push('Key-Values');
+            if (entCount > 0) tabs.push('Entities');
+            if (tblCount > 0) tabs.push('Tables');
             if (r.invoices) tabs.push('Invoice Fields');
+            if (r.receipts) tabs.push('Receipt Fields');
+            if (r.documents && r.model_used === 'prebuilt-idDocument') tabs.push('ID Fields');
             tabs.push('Raw JSON');
+
             const tabsEl = document.getElementById('result-tabs');
             tabsEl.innerHTML = tabs.map((t, i) => `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchTab(this,'${t}')">${t}</div>`).join('');
             renderTab('Content');
@@ -1225,18 +1266,40 @@
         function renderTab(name) {
             const r = state.results;
             const c = document.getElementById('tab-content');
+            
             if (name === 'Content') {
                 c.innerHTML = `<div class="results-area">${escHtml(r.content || 'No text content extracted.')}</div>`;
             } else if (name === 'Key-Values') {
-                const rows = (r.key_value_pairs || []).map(kv => `<tr><td class="kv-key">${escHtml(kv.key)}</td><td class="kv-val">${escHtml(kv.value)}</td><td class="kv-conf">${(kv.confidence * 100).toFixed(0)}%</td></tr>`).join('');
+                const rows = (r.key_value_pairs || []).map(kv => `<tr><td class="kv-key">${escHtml(kv.key)}</td><td class="kv-val">${escHtml(kv.value)}</td><td class="kv-conf">${kv.confidence ? (kv.confidence * 100).toFixed(0) + '%' : '—'}</td></tr>`).join('');
                 c.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden"><table class="kv-table"><thead><tr style="border-bottom:1px solid var(--border2)"><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Key</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Value</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;text-align:right">Conf</td></tr></thead><tbody>${rows}</tbody></table></div>`;
             } else if (name === 'Entities') {
                 const tags = (r.entities || []).map(e => `<div class="entity-tag">${escHtml(e.content)}<span>${e.category}</span></div>`).join('');
                 c.innerHTML = `<div class="tag-cloud">${tags}</div>`;
-            } else if (name === 'Invoice Fields') {
-                const inv = (r.invoices || [])[0];
-                if (inv) {
-                    const rows = Object.entries(inv.fields).map(([k, v]) => `<tr><td class="kv-key">${escHtml(k)}</td><td class="kv-val">${escHtml(v.value || '')}</td><td class="kv-conf">${v.confidence ? ((v.confidence * 100).toFixed(0) + '%') : '—'}</td></tr>`).join('');
+            } else if (name === 'Tables') {
+                let html = '';
+                (r.tables || []).forEach((tbl, idx) => {
+                    html += `<div style="margin-bottom:20px"><p class="section-title">Table ${idx + 1} (${tbl.row_count}x${tbl.column_count})</p>`;
+                    html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow-x:auto"><table class="kv-table"><tbody>`;
+                    for (let row = 0; row < tbl.row_count; row++) {
+                        html += `<tr>`;
+                        for (let col = 0; col < tbl.column_count; col++) {
+                            const val = (tbl.cells[row] && tbl.cells[row][col]) ? tbl.cells[row][col] : '';
+                            html += `<td style="border:1px solid var(--border);min-width:100px">${escHtml(val)}</td>`;
+                        }
+                        html += `</tr>`;
+                    }
+                    html += `</tbody></table></div></div>`;
+                });
+                c.innerHTML = html;
+            } else if (name === 'Invoice Fields' || name === 'Receipt Fields' || name === 'ID Fields') {
+                const docs = r.invoices || r.receipts || r.documents || [];
+                const doc = docs[0];
+                if (doc) {
+                    const rows = Object.entries(doc.fields).map(([k, v]) => {
+                        let displayVal = v.value;
+                        if (Array.isArray(v.value)) displayVal = JSON.stringify(v.value);
+                        return `<tr><td class="kv-key">${escHtml(k)}</td><td class="kv-val">${escHtml(displayVal || '')}</td><td class="kv-conf">${v.confidence ? ((v.confidence * 100).toFixed(0) + '%') : '—'}</td></tr>`;
+                    }).join('');
                     c.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden"><table class="kv-table"><thead><tr style="border-bottom:1px solid var(--border2)"><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Field</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace">Value</td><td style="padding:10px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;text-align:right">Conf</td></tr></thead><tbody>${rows}</tbody></table></div>`;
                 }
             } else if (name === 'Raw JSON') {
